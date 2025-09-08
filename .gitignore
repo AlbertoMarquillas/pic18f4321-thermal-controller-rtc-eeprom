@@ -1,0 +1,36 @@
+# --- Common ignores ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.code-workspace
+build/
+dist/
+*.log
+logs/
+.cache/
+tmp/
+
+# --- MPLAB X specific ---
+nbproject/private/
+build/
+dist/
+*.X/nbproject/private/
+*.X/build/
+*.X/dist/
+
+# --- C/C++ artifacts ---
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.exe
+*.out
+
+# --- Data and docs ---
+docs/assets/**
+!docs/assets/.gitkeep
+docs/specs/**
+!docs/specs/.gitkeep
