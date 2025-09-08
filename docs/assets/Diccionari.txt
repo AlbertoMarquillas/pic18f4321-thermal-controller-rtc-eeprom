@@ -1,0 +1,468 @@
+Interfície 0 - TAD TIMER
+
+void RSI_Timer0(void);
+// IMPORTANT! Funció que ha de ser cridada des de la RSI, en cas que TMR0IF==1.
+// La RSI ha de contenir: if (TMR0IF==1) RSI_Timer0();
+
+void TI_Init(void);
+// Post: Constructor. És precondició global haver cridat aquesta funció quan es cridi qualsevol altra funció del TAD.
+
+unsigned char TI_NewTimer(unsigned char *TimerHandle);
+// Post: Retorna TI_CERT en cas que s'hagi creat adequadament un nou timer, i TI_FALS en cas contrari.
+// Posa a *TimerHandle l'identificador de timer assignat, necessari per usar les funcions TI_GetTics i TI_ResetTics.
+
+void TI_ResetTics(unsigned char TimerHandle);
+// Pre: Handle ha estat retornat per TI_NewTimer.
+// Post: Engega la temporització associada a 'TimerHandle', guardant la referència temporal en el moment de la crida.
+
+unsigned long TI_GetTics(unsigned char TimerHandle);
+// Pre: Handle ha estat retornat per TI_NewTimer.
+// Post: Retorna els tics transcorreguts des de la crida a TI_ResetTics per al mateix TimerHandle.
+
+
+Interfície 1 - TAD SIO
+
+void SIO_Init(void);
+// Pre: El sistema ha d'estar inicialitzat correctament.
+// Post: Configura els registres necessaris per a la comunicació UART a 9600 bps.
+
+char SIOTx_pucEnviar(void);
+// Pre: La comunicació UART ha d'estar inicialitzada.
+// Post: Retorna 1 si el buffer de transmissió està buit, 0 en cas contrari.
+
+void SIOTx_sendChar(char c);
+// Pre: La comunicació UART ha d'estar inicialitzada i el buffer de transmissió disponible.
+// Post: El caràcter especificat s'envia per UART.
+
+char SIORX_heRebut(void);
+// Pre: La comunicació UART ha d'estar inicialitzada.
+// Post: Retorna 1 si hi ha un caràcter disponible per llegir, 0 en cas contrari.
+
+char SIORX_rebreChar(void);
+// Pre: Ha d'haver un caràcter disponible per llegir.
+// Post: Retorna el caràcter rebut a través de UART.
+
+
+Interfície 2 - TAD ADC
+
+void ADC_InitADC(void);
+// Pre: Cap.
+// Post: L'ADC queda inicialitzat i llest per començar conversions.
+
+void ADC_selectCH(unsigned char channel);
+// Pre: ADC inicialitzat amb ADC_InitADC().
+// Post: Es configura el canal corresponent en el registre ADCON0.
+
+void ADC_motorADC(void);
+// Pre: ADC ha estat inicialitzat amb ADC_InitADC().
+// Post: Es guarda internament el valor dels tres canals. Cal llegir-los amb les funcions get.
+
+unsigned char ADC_getTemp(void);
+// Pre: S'ha executat almenys un cicle de conversió amb ADC_motorADC().
+// Post: Retorna el valor ADC del canal de temperatura.
+
+unsigned char ADC_getJoyX(void);
+// Pre: S'ha executat almenys un cicle de conversió amb ADC_motorADC().
+// Post: Retorna el valor ADC del canal de JoyX.
+
+unsigned char ADC_getJoyY(void);
+// Pre: S'ha executat almenys un cicle de conversió amb ADC_motorADC().
+// Post: Retorna el valor ADC del canal de JoyY.
+
+
+Interfície 3 - TAD I2C
+
+char StartI2C(unsigned char addr);
+// Pre: addr conté l'adreça I2C del dispositiu (bit R/W a 0).
+// Post: Inicia una comunicació I2C com a master. Retorna 1 si la resposta és positiva (ACK).
+
+char ReStartI2C_(unsigned char addr);
+// Pre: addr conté l'adreça I2C del dispositiu (bit R/W a 1 o 0 segons lectura/escriptura).
+// Post: Reemeteix una condició de START i envia una nova adreça. Retorna 1 si hi ha ACK.
+
+void I2C_Stop_(void);
+// Pre: Ha d’haver hagut una comunicació I2C prèvia.
+// Post: Genera una condició STOP al bus I2C.
+
+char I2C_Write(unsigned char data);
+// Pre: Cal haver iniciat la comunicació amb StartI2C o ReStartI2C_.
+// Post: Envia un byte per I2C. Retorna 2 si el dispositiu ha respost amb ACK, 1 si NACK.
+
+char I2C_Read(unsigned char ack);
+// Pre: Cal haver iniciat una lectura I2C (amb ReStartI2C_ amb bit de lectura).
+// Post: Llegeix un byte del bus I2C. Si ack=1, es retorna ACK, si ack=0 es finalitza amb NACK.
+
+
+Interfície 4 - TAD CONTROLADOR
+
+void CONTROLLER_initController(void);
+// Pre: Cap.
+// Post: Inicialitza les variables internes del controlador i reinicia el seu estat inicial.
+
+void CONTROLLER_MotorControlador(void);
+// Pre: El controlador ha d'estar inicialitzat.
+// Post: Executa la màquina d’estats principal que gestiona el control tèrmic, LED, ventiladors i registre de dades.
+
+void CONTROLLER_actualitzaEstat(void);
+// Pre: El controlador ha d’estar actiu.
+// Post: Comprova si cal iniciar una nova lectura de temperatura i actualitza l’estat intern.
+
+void CONTROLLER_setTempsMostreig(unsigned char nouTemps);
+// Pre: nouTemps ha de ser un valor vàlid (no zero).
+// Post: Assigna un nou interval de mostreig al controlador de temperatura.
+
+unsigned char CONTROLLER_GetLlindar(unsigned char temp);
+// Pre: temp ha de ser un valor de temperatura vàlid (0-255).
+// Post: Retorna el nivell tèrmic (baixa, moderada, alta, crítica) segons els llindars configurats.
+
+unsigned char CONTROLLER_getLogIndex(unsigned char logicalIndex);
+// Pre: logicalIndex ha de ser menor que el nombre de cadenes disponibles.
+// Post: Retorna la posició física real de la cadena dins l’EEPROM.
+
+void CONTROLLER_formatCadena(char* dest, const char* buffer);
+// Pre: buffer conté una cadena vàlida de dades, dest és un array amb memòria reservada.
+// Post: Construeix una cadena llegible en format de log a partir del buffer cru.
+
+unsigned char CONTROLLER_getLogFormatted(unsigned char logicalIndex, char* cadena);
+// Pre: logicalIndex vàlid, cadena ha de tenir espai suficient.
+// Post: Omple 'cadena' amb el contingut formatat d’un log si està disponible. Retorna 1 si s’ha pogut obtenir.
+
+unsigned int Controller_getRamAddr();
+// Pre: Cap.
+// Post: Retorna l’última adreça de RAM escrita pel sistema.
+
+void Controller_clearRamAddr();
+// Pre: Cap.
+// Post: Reinicia el comptador d’adreces de la RAM a zero.
+
+void CONTROLER_resetController();
+// Pre: Cap.
+// Post: Restaura totes les variables i estats interns del controlador al seu valor inicial.
+
+
+Interfície 5 - TAD EEPROM
+
+unsigned char EEPROM_Llegeix(unsigned char addr);
+// Pre: addr ha de ser una adreça vàlida dins l'espai EEPROM.
+// Post: Retorna el valor llegit de l’adreça especificada.
+
+void EEPROM_Escriu(unsigned char addr, unsigned char dada);
+// Pre: addr ha de ser vàlid. dada conté la informació a escriure.
+// Post: Escriu el byte 'dada' a l’adreça 'addr' de l’EEPROM.
+
+unsigned char EEPROM_HasAcabat(void);
+// Pre: Cal haver iniciat prèviament una operació d’escriptura.
+// Post: Retorna 1 si l’escriptura ha finalitzat, 0 altrament.
+
+void EEPROM_iniciaEscriptura(const unsigned char* cadena);
+// Pre: cadena ha de ser una cadena vàlida de longitud EEPROM_TAM_CADENA.
+// Post: Inicia el motor d’escriptura per guardar la cadena a la EEPROM.
+
+void EEPROM_motorEscriptura(void);
+// Pre: Cal haver cridat EEPROM_iniciaEscriptura().
+// Post: Executa el motor cooperatiu per escriure la cadena caràcter a caràcter.
+
+void EEPROM_iniciaLectura(unsigned char index, char* dest);
+// Pre: index ha de ser vàlid i dest ha de tenir espai suficient.
+// Post: Inicia la lectura cooperativa d’una cadena guardada a la EEPROM.
+
+void EEPROM_motorLectura(void);
+// Pre: Cal haver cridat EEPROM_iniciaLectura().
+// Post: Executa la lectura caràcter a caràcter fins completar la cadena.
+
+unsigned char EEPROM_esticEscriptura(void);
+// Pre: Cap.
+// Post: Retorna 1 si el motor d’escriptura està actiu, 0 en cas contrari.
+
+unsigned char EEPROM_lecturaCompleta(void);
+// Pre: Cal haver iniciat una lectura.
+// Post: Retorna 1 si la lectura s’ha completat amb èxit.
+
+void EEPROM_printCadenaFormatejada(const char* cadena);
+// Pre: cadena ha d’estar en format correcte.
+// Post: Envia la cadena formatejada per UART.
+
+void EEPROM_printUltimaCadena(void);
+// Pre: Cal que hi hagi almenys una cadena guardada.
+// Post: Llegeix i imprimeix l’última cadena guardada.
+
+void EEPROM_printTotsElsLogs(void);
+// Pre: Hi ha d’haver com a mínim una cadena guardada.
+// Post: Imprimeix totes les cadenes emmagatzemades de forma seqüencial.
+
+void EEPROM_reset(void);
+// Pre: Cap.
+// Post: Reinicia variables internes del TAD_EEPROM, no afecta el contingut físic de la memòria.
+
+void EEPROM_restaurarEstat(void);
+// Pre: Cap.
+// Post: Llegeix i restaura l’adreça actual i el comptador de cadenes des de la memòria.
+
+unsigned char EEPROM_getContadorCadenes(void);
+// Pre: Cap.
+// Post: Retorna el nombre total de cadenes actualment guardades a la EEPROM.
+
+unsigned char EEPROM_getFullTurn(void);
+// Pre: Cap.
+// Post: Retorna 1 si s’ha completat una volta completa d’escriptures, 0 si no.
+
+unsigned char EEPROM_getUltimaAddr(void);
+// Pre: Cap.
+// Post: Retorna l’última adreça d’escriptura usada per la EEPROM.
+
+unsigned char EEPROM_getPrimerIndex(void);
+// Pre: Cap.
+// Post: Retorna l’índex lògic de la primera cadena emmagatzemada.
+
+unsigned char EEPROM_getIndexSeguent(void);
+// Pre: Cap.
+// Post: Retorna l’índex de la següent posició lliure per escriure una nova cadena.
+
+char EEPROM_formataLogDatalogs(const char* cadena, char* dest);
+// Pre: cadena conté una cadena vàlida i dest ha de tenir prou espai.
+// Post: Formata la cadena original en format "DATALOGS:dd-mm-aaaa a les hh:mm:ss\r\n" i la desa a dest.
+
+unsigned char EEPROM_resetEEPROM(void);
+// Pre: Cap.
+// Post: Inicia un motor cooperatiu per esborrar tota la memòria EEPROM posant-la a 0xFF.
+
+void EEPROM_initEEprom();
+// Pre: Cap.
+// Post: Inicialitza totes les variables internes del TAD_EEPROM.
+
+void resetEEPROMmain();
+// Pre: Cap.
+// Post: Esborra tota la memòria EEPROM immediatament (bloquejant).
+
+Interfície 6 - TAD JOYSTICK
+
+unsigned char JOY_getPosicio(void);
+// Pre: S’han obtingut valors vàlids de l'ADC a través de JOY_MotorJoystick().
+// Post: Retorna una de les constants de posició: CENTRE, ADALT, ABAIX, ESQUERRA, DRETA.
+
+void JOY_MotorJoystick(void);
+// Pre: El TAD ADC ha estat inicialitzat amb ADC_InitADC() i ADC_motorADC() s’està cridant periòdicament.
+// Post: Els valors del joystick queden emmagatzemats internament i poden ser consultats amb JOY_getPosicio().
+
+
+Interfície 7 - TAD LED
+
+void LED_InitLed(void);
+// Pre: Cap.
+// Post: El LED queda preparat per ser usat i el temporitzador queda inicialitzat.
+
+void LED_setLedColor(unsigned char ledColor);
+// Pre: El LED ha estat inicialitzat.
+// Post: El LED mostrarà aquest color si no està en mode parpelleig.
+
+void LED_setBlinkMode(unsigned char blinkMode);
+// Pre: El LED ha estat inicialitzat.
+// Post: Si està activat, el LED alternarà entre vermell i magenta.
+
+void LED_motorLed(void);
+// Pre: LED_InitLed() ha estat cridat prèviament.
+// Post: El LED mostra el color indicat o fa parpelleig segons estat i configuració.
+
+Interfície 8 - TAD MENU
+
+unsigned char MENU_getLowTemp(void);
+// Pre: El sistema ha rebut la configuració inicial des del Java via menú.
+// Post: Retorna el llindar per a temperatura baixa (actualment 0 provisional).
+
+unsigned char MENU_getModerateTemp(void);
+// Pre: El sistema ha rebut la configuració inicial des del Java via menú.
+// Post: Retorna el llindar per a temperatura moderada (actualment 0 provisional).
+
+unsigned char MENU_getHighTemp(void);
+// Pre: El sistema ha rebut la configuració inicial des del Java via menú.
+// Post: Retorna el llindar per a temperatura alta (actualment 0 provisional).
+
+unsigned char MENU_getCriticalTemp(void);
+// Pre: El sistema ha rebut la configuració inicial des del Java via menú.
+// Post: Retorna el llindar per a temperatura crítica (actualment 0 provisional).
+
+unsigned char MENU_getTempsMesuraTemp(void);
+// Pre: El sistema ha rebut la configuració inicial des del Java via menú.
+// Post: Retorna el valor de temps de mostreig configurat (actualment 0 provisional).
+
+void MENU_actualitzaEstat(void);
+// Pre: El sistema està operatiu i monitoritza l’entrada del polsador.
+// Post: Si hi ha pulsació, l’estat del menú canvia a POLSACIO.
+
+void MENU_MotorMenu(void);
+// Pre: El mòdul ha estat inicialitzat i està en execució periòdica.
+// Post: Gestiona el menú i envia comandes UART segons l’estat.
+
+unsigned int MENU_GetAny(void);
+// Pre: El sistema ha rebut la configuració.
+// Post: Retorna l’any actual configurat al sistema.
+
+unsigned char MENU_GetMes(void);
+// Pre: El sistema ha rebut la configuració.
+// Post: Retorna el mes actual configurat al sistema.
+
+unsigned char MENU_GetDia(void);
+// Pre: El sistema ha rebut la configuració.
+// Post: Retorna el dia actual configurat al sistema.
+
+unsigned char MENU_GetHora(void);
+// Pre: El sistema ha rebut la configuració.
+// Post: Retorna l’hora actual configurada al sistema.
+
+unsigned char MENU_GetMinut(void);
+// Pre: El sistema ha rebut la configuració.
+// Post: Retorna els minuts actuals configurats al sistema.
+
+unsigned char MENU_GetSec(void);
+// Pre: El sistema ha rebut la configuració.
+// Post: Retorna els segons actuals configurats al sistema.
+
+void initMenu(void);
+// Pre: Cap.
+// Post: Inicialitza el TAD_MENU i els temporitzadors interns associats.
+
+unsigned char MENU_hiHaNewConfig(void);
+// Pre: Cap.
+// Post: Retorna 1 si s’ha rebut nova configuració des del Java, 0 en cas contrari.
+
+unsigned char MENU_getTempsMostra(void);
+// Pre: Configuració inicial rebuda.
+// Post: Retorna el temps de mostreig configurat per l’usuari.
+
+unsigned char MENU_getTempBaixa(void);
+// Pre: Configuració inicial rebuda.
+// Post: Retorna el llindar per temperatura baixa.
+
+unsigned char MENU_getTempModerada(void);
+// Pre: Configuració inicial rebuda.
+// Post: Retorna el llindar per temperatura moderada.
+
+unsigned char MENU_getTempAlta(void);
+// Pre: Configuració inicial rebuda.
+// Post: Retorna el llindar per temperatura alta.
+
+void MENU_setAlarma(unsigned char alarma);
+// Pre: El sistema ha detectat un canvi d’hora o una alarma RTC.
+// Post: Actualitza internament el flag que indica que cal actualitzar l’hora.
+
+Interfície 9 - TAD OUT
+
+void OUT_Init(void);
+// Pre: Cap.
+// Post: Els pins dels LEDs queden configurats com a sortida i els LEDs apagats.
+
+void OUT_EncenLed(unsigned char led);
+// Pre: OUT_Init() ha estat cridat i el LED especificat és vàlid.
+// Post: El LED corresponent queda encès.
+
+void OUT_ApagaLed(unsigned char led);
+// Pre: OUT_Init() ha estat cridat i el LED especificat és vàlid.
+// Post: El LED corresponent queda apagat.
+
+
+Interfície 10 - TAD POLSADOR
+
+void InitPolsador(void);
+// Pre: Cap.
+// Post: El polsador s’inicialitza en estat "no premut" i el temporitzador de rebots queda actiu.
+
+void POLSADOR_MotorPolsador(void);
+// Pre: InitPolsador() ha estat cridat.
+// Post: Si es detecta una pulsació vàlida, es marca internament com a POLS_CERT.
+
+unsigned char POLSADOR_HiHaPolsacio(void);
+// Pre: S’ha executat el motor de polsador periòdicament.
+// Post: Retorna l’estat intern de detecció de polsació: POLS_CERT (1) o POLS_FALS (0).
+
+Interfície 11 - TAD RAM
+
+void RAM_Init(void);
+// Pre: El sistema ha estat inicialitzat i la RAM està connectada correctament.
+// Post: Els pins del microcontrolador queden configurats per accedir a la RAM 62256.
+
+void RAM_Write(unsigned int address, unsigned char data);
+// Pre: La RAM ha estat inicialitzada amb RAM_Init().
+// Post: La dada queda escrita a l’adreça especificada.
+
+unsigned char RAM_Read(unsigned int address);
+// Pre: La RAM ha estat inicialitzada amb RAM_Init().
+// Post: Retorna el valor de la memòria a l’adreça especificada.
+
+unsigned char RAM_resetRAM(unsigned int ramAddress);
+// Pre: La RAM ha estat inicialitzada amb RAM_Init().
+// Post: Esborra totes les posicions escrites de la RAM fins a ramAddress. Retorna 1 quan finalitza el procés.
+
+Interfície 12 - TAD RTC
+
+char RTC_Init(void);
+// Pre: El bus I2C ha d’estar inicialitzat correctament.
+// Post: Configura el RTC DS3231 per funcionar i activa la seva alarma minutària.
+
+unsigned char RTC_ConfigurarHora(unsigned char sec, unsigned char min, unsigned char hora,
+                                  unsigned char dia, unsigned char mes, unsigned char any);
+// Pre: Valors passats en decimal dins del rang vàlid. El bus I2C ha d’estar disponible.
+// Post: Escriu l’hora completa al RTC en format BCD. Retorna 1 si l’operació té èxit, 0 si falla.
+
+void RTC_motor(void);
+// Pre: RTC ha d’estar inicialitzat i haver-se configurat la alarma A1F.
+// Post: Llegeix el registre d’estat del RTC i detecta si ha saltat l’alarma. Si és així, activa MENU_setAlarma().
+
+void RTC_readRTC(unsigned char *sec, unsigned char *min, unsigned char *hora, unsigned char *dia, unsigned char *mes, unsigned char *year);
+// Pre: Els punters han de ser vàlids i el RTC ha d’estar accessible via I2C.
+// Post: Llegeix l’hora completa del RTC i desa els valors obtinguts en decimal a les variables apuntades.
+
+Interfície 12 - TAD RTC
+
+char RTC_Init(void);
+// Pre: El bus I2C ha d’estar inicialitzat correctament.
+// Post: Configura el RTC DS3231 per funcionar i activa la seva alarma minutària.
+
+unsigned char RTC_ConfigurarHora(unsigned char sec, unsigned char min, unsigned char hora,
+                                  unsigned char dia, unsigned char mes, unsigned char any);
+// Pre: Valors passats en decimal dins del rang vàlid. El bus I2C ha d’estar disponible.
+// Post: Escriu l’hora completa al RTC en format BCD. Retorna 1 si l’operació té èxit, 0 si falla.
+
+void RTC_motor(void);
+// Pre: RTC ha d’estar inicialitzat i haver-se configurat la alarma A1F.
+// Post: Llegeix el registre d’estat del RTC i detecta si ha saltat l’alarma. Si és així, activa MENU_setAlarma().
+
+void RTC_readRTC(unsigned char *sec, unsigned char *min, unsigned char *hora, unsigned char *dia, unsigned char *mes, unsigned char *year);
+// Pre: Els punters han de ser vàlids i el RTC ha d’estar accessible via I2C.
+// Post: Llegeix l’hora completa del RTC i desa els valors obtinguts en decimal a les variables apuntades.
+
+
+Interfície 13 - TAD TEMP
+
+void TEMP_initTemp(void);
+// Pre: Cap.
+// Post: Inicialitza les variables del TAD, crea el temporitzador i fixa l’estat inicial d’espera.
+
+void TEMP_setTempsMostreig(unsigned char nouTemps);
+// Pre: TEMP_initTemp() ha estat cridat prèviament.
+// Post: Defineix el temps de mostreig entre lectures de temperatura segons el valor nouTemps.
+
+unsigned char TEMP_getTemp(void);
+// Pre: El motor de temperatura ha executat almenys una lectura.
+// Post: Retorna el darrer valor de temperatura mesurat en graus Celsius (valor enter).
+
+void motorTemp(void);
+// Pre: TEMP_initTemp() ha estat cridat i ADC_motorADC() s’executa periòdicament.
+// Post: Si ha passat el temps de mostreig, realitza una nova lectura i converteix el valor ADC a graus Celsius.
+
+unsigned char TEMP_hiHaNewTemp(void);
+// Pre: TEMP_initTemp() ha estat cridat.
+// Post: Retorna 1 si hi ha una nova lectura de temperatura disponible, 0 altrament.
+
+Interfície 14 - TAD VENTILADOR
+
+void VENT_InitVent(void);
+// Pre: Cap.
+// Post: Els ventiladors queden apagats (CRITICAL) i preparats per controlar-se amb PWM simulat.
+
+void VENT_setVelocity(unsigned char tempLevel);
+// Pre: Els ventiladors han estat inicialitzats amb VENT_InitVent().
+// Post: Els ventiladors canvien el seu comportament segons la configuració especificada (LOW, MODERATE, HIGH, CRITICAL).
+
+void motorVentilador(unsigned char ventilador);
+// Pre: El ventilador ha estat inicialitzat. La funció ha de ser cridada periòdicament.
+// Post: El ventilador s’activa o desactiva segons el mode configurat, utilitzant PWM si correspon.
