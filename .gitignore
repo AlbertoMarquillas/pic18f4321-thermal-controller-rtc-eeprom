@@ -34,3 +34,6 @@ docs/assets/**
 !docs/assets/.gitkeep
 docs/specs/**
 !docs/specs/.gitkeep
+
+# Allow documentation files
+!docs/**
